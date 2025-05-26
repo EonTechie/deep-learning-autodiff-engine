@@ -399,7 +399,56 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    # BACKPROPAGATION ALGORİTMASI
+    # 
+    # Amaç: Çıktıdan başlayarak, tüm node'ların gradyanlarını hesapla
+    # Yöntem: Reverse-mode automatic differentiation (backprop)
+    #
+    # Algoritma:
+    # 1. Çıktıdan başla, geriye doğru git (reverse topological order)
+    # 2. Her node için: gradyan katkılarını topla
+    # 3. Bu node'un gradyanını kullanarak, input node'larının gradyanlarını hesapla
+    # 4. Chain rule ile gradyanları geriye yay
+    
+    # Reverse topological order'da node'ları işle (çıktıdan girişe doğru)
+    for node in reverse_topo_order:
+        
+        # Eğer bu node gradyan gerektirmiyorsa, atla
+        if not node.requires_grad:
+            continue
+            
+        # ADIM 1: Bu node için tüm gradyan katkılarını topla
+        # (Bir node'a birden fazla yerden gradyan gelebilir)
+        if node in node_to_output_grads_list:
+            grad_list = node_to_output_grads_list[node]
+            
+            if len(grad_list) == 1:
+                # Tek gradyan katkısı varsa, direkt ata
+                node.grad = grad_list[0]
+            else:
+                # Birden fazla gradyan katkısı varsa, topla
+                # Örnek: node = x, y = x + z, w = x * 2 ise
+                # x'e hem y'den hem w'den gradyan gelir, bunları topla
+                node.grad = sum_node_list(grad_list)
+        
+        # ADIM 2: Eğer bu node bir işlem sonucuysa, input'larına gradyan yay
+        if node.op is not None:
+            
+            # Bu node'un gradyanını kullanarak, input'larının gradyanlarını hesapla
+            # Her işlemin kendi gradient() fonksiyonu var (chain rule uygular)
+            input_grads = node.op.gradient_as_tuple(node.grad, node)
+            
+            # ADIM 3: Hesaplanan gradyanları input node'lara yay
+            for i, input_node in enumerate(node.inputs):
+                if input_node.requires_grad:
+                    
+                    # Input node'un gradyan listesini hazırla
+                    if input_node not in node_to_output_grads_list:
+                        node_to_output_grads_list[input_node] = []
+                    
+                    # Bu input node'a gradyan katkısı ekle
+                    # (Daha sonra toplanacak, çünkü başka yerlerden de gelebilir)
+                    node_to_output_grads_list[input_node].append(input_grads[i])
     ### END YOUR SOLUTION
 
 
@@ -412,14 +461,49 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     sort.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    # Topological Sort: Computational graph'taki node'ları doğru sırada sıralar
+    # 
+    # Amaç: Her node'u, bağımlı olduğu node'lardan SONRA sıralar
+    # Örnek: C = A + B ise, sıralama: [A, B, C] (A ve B önce, C sonra)
+    #
+    # Algoritma: Post-order DFS (Depth-First Search)
+    # - Önce bağımlılıkları ziyaret et
+    # - Sonra kendini listeye ekle
+    
+    visited = set()      # Ziyaret edilen node'ları takip et (tekrar ziyaret etme)
+    topo_order = []      # Sonuç listesi (topological sıralama)
+    
+    # Her verilen node için DFS başlat
+    for node in node_list:
+        topo_sort_dfs(node, visited, topo_order)
+    
+    return topo_order    # Sıralanmış node listesini döndür
     ### END YOUR SOLUTION
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    # DFS (Depth-First Search) - Post-order traversal
+    # 
+    # Post-order: Önce çocukları ziyaret et, sonra kendini işle
+    # Bu sayede bağımlılıklar önce, kendisi sonra listeye eklenir
+    
+    # Eğer bu node daha önce ziyaret edildiyse, tekrar işleme
+    if node in visited:
+        return
+    
+    # Bu node'u ziyaret edildi olarak işaretle
+    visited.add(node)
+    
+    # ÖNCE: Tüm bağımlılıkları (input node'ları) ziyaret et
+    # Örnek: C = A + B ise, C'yi işlemeden önce A ve B'yi işle
+    for input_node in node.inputs:
+        topo_sort_dfs(input_node, visited, topo_order)
+    
+    # SONRA: Tüm bağımlılıklar işlendikten sonra kendini listeye ekle
+    # Bu sayede bağımlılıklar listede önce, bu node sonra gelir
+    topo_order.append(node)
     ### END YOUR SOLUTION
 
 
