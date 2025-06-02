@@ -186,7 +186,7 @@ class Transpose(TensorOp):
         # Transpose: Matrisin satır-sütunlarını değiştirme işlemi
         # Transpose işleminin türevi = aynı transpose işlemini tekrar uygula
         # 
-        # Mantık: Eğer A'yı transpose ettiysen, gradyanı da transpose et
+        # Yola çıktığım nokta: Eğer A'yı transpose ettiysen, gradyanı da transpose et
         # Çünkü: (A^T)^T = A (transpose'un tersi kendisidir)
         #
         # Örnek: A = [[1,2], [3,4]] → A^T = [[1,3], [2,4]]
@@ -214,7 +214,7 @@ class Reshape(TensorOp):
         # Reshape: Tensörün şeklini değiştirme işlemi (elemanlar aynı kalır)
         # Reshape işleminin türevi = gradyanı orijinal şekle geri döndür
         #
-        # Mantık: Reshape sadece şekil değiştirir, değerler aynı kalır
+        # Yola çıktığım nokta: Reshape sadece şekil değiştirir, değerler aynı kalır
         # Bu yüzden gradyan da aynı değerlere sahip olmalı, sadece şekli farklı
         #
         # Örnek: [1,2,3,4,5,6] → reshape(2,3) → [[1,2,3], [4,5,6]]
@@ -243,7 +243,7 @@ class BroadcastTo(TensorOp):
         # BroadcastTo: Küçük tensörü büyük şekle "yayma" işlemi
         # Broadcast işleminin türevi = yayılan boyutları tekrar topla
         #
-        # Mantık: Broadcast bir değeri kopyalar, türevde bu kopyaları toplarız
+        # Yola çıktığım nokta: Broadcast bir değeri kopyalar, türevde bu kopyaları toplarız
         # Örnek: [1,2] → broadcast_to(3,2) → [[1,2], [1,2], [1,2]]
         #        Gradyan: [[a,b], [c,d], [e,f]] → sum → [a+c+e, b+d+f]
         
@@ -285,7 +285,7 @@ class Summation(TensorOp):
         # Summation: Belirli boyutlar boyunca toplama işlemi
         # Sum işleminin türevi = gradyanı orijinal şekle geri yay (broadcast)
         #
-        # Mantık: Sum işlemi boyutları "sıkıştırır", türevde bu boyutları geri açarız
+        # Yola çıktığım nokta: Sum işlemi boyutları "sıkıştırır", türevde bu boyutları geri açarız
         # Örnek: [[1,2,3], [4,5,6]] → sum(axis=0) → [5,7,9]
         #        Gradyan: [a,b,c] → broadcast → [[a,b,c], [a,b,c]]
         
@@ -336,7 +336,7 @@ class MatMul(TensorOp):
         # ∂/∂A (A @ B) = out_grad @ B^T    (A'ya göre türev)
         # ∂/∂B (A @ B) = A^T @ out_grad    (B'ye göre türev)
         #
-        # Mantık: Chain rule + matris çarpımının türev kuralları
+        # Yola çıktığım nokta: Chain rule + matris çarpımının türev kuralları
         # Örnek: C = A @ B ise, dC/dA = dC @ B^T, dC/dB = A^T @ dC
         
         lhs, rhs = node.inputs  # A ve B matrislerini al
@@ -379,7 +379,7 @@ class Negate(TensorOp):
         # Negate: f(x) = -x işleminin türevi
         # Türev kuralı: d/dx (-x) = -1
         #
-        # Mantık: Negatif işareti türevde de kalır
+        # Yola çıktığım nokta: Negatif işareti türevde de kalır
         # Chain rule: out_grad * (-1) = -out_grad
         # Örnek: y = -x ise, dy/dx = -1
         
@@ -394,12 +394,22 @@ def negate(a):
 class Log(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # Log: f(x) = ln(x) işlemi (doğal logaritma)
+        # Not: x > 0 olmalı (log negatif sayılardan tanımsız)
+        return array_api.log(a)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # Log: f(x) = ln(x) işleminin türevi
+        # Türev kuralı: d/dx (ln(x)) = 1/x
+        #
+        # Yola çıktığım nokta: Logaritmanın temel türevi
+        # Chain rule: out_grad * (1/x)
+        # Örnek: y = ln(x) ise, dy/dx = 1/x
+        
+        input_tensor = node.inputs[0]  # Giriş tensörünü al (x)
+        return out_grad / input_tensor  # out_grad * (1/x)
         ### END YOUR SOLUTION
 
 
@@ -410,12 +420,23 @@ def log(a):
 class Exp(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # Exp: f(x) = e^x işlemi (exponential fonksiyon)
+        # e ≈ 2.71828 (Euler sayısı)
+        return array_api.exp(a)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # Exp: f(x) = e^x işleminin türevi
+        # Türev kuralı: d/dx (e^x) = e^x
+        #
+        # Yola çıktığım nokta: Exponential fonksiyonun özel özelliği
+        # Türevi kendisine eşittir!
+        # Chain rule: out_grad * e^x
+        # Örnek: y = e^x ise, dy/dx = e^x
+        
+        input_tensor = node.inputs[0]  # Giriş tensörünü al (x)
+        return out_grad * exp(input_tensor)  # out_grad * e^x
         ### END YOUR SOLUTION
 
 
@@ -426,12 +447,30 @@ def exp(a):
 class ReLU(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # ReLU: f(x) = max(0, x) işlemi (Rectified Linear Unit)
+        # x > 0 ise x, x ≤ 0 ise 0 döndürür
+        # Neural network'lerde çok kullanılan aktivasyon fonksiyonu
+        return array_api.maximum(a, 0)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # ReLU: f(x) = max(0, x) işleminin türevi
+        # Türev kuralı: 
+        # d/dx (ReLU(x)) = 1 if x > 0
+        #                = 0 if x ≤ 0
+        #
+        # Yola çıktığım nokta: ReLU parçalı fonksiyondur
+        # Pozitif bölgede eğim 1, negatif bölgede eğim 0
+        # Chain rule: out_grad * (1 veya 0)
+        
+        input_tensor = node.inputs[0]  # Giriş tensörünü al (x)
+        
+        # x > 0 olan yerlerde 1, x ≤ 0 olan yerlerde 0 olan mask oluştur
+        relu_mask = Tensor(input_tensor.realize_cached_data() > 0, 
+                          requires_grad=False)
+        
+        return out_grad * relu_mask  # out_grad * mask
         ### END YOUR SOLUTION
 
 
